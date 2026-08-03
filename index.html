@@ -15,17 +15,17 @@
         #cardPlacar { margin: 20px; background: #111; border-radius: 16px; padding: 30px 0; text-align: center; }
         #placar { font-size: 64px; font-weight: bold; }
         #placar span { display: inline-block; min-width: 70px; }
-        #controle { display: block; width: 90%; margin: 10px auto 20px auto; padding: 16px; font-size: 18px; font-weight: bold; background: #2d8cf0; border: none; border-radius: 12px; color: #fff; }
+        #controle { display: block; width: 90%; margin: 10px auto 20px auto; padding: 16px; font-size: 18px; font-weight: bold; background: #2d8cf0; border: none; border-radius: 12px; color: #fff; cursor: pointer; }
         .divisor { height: 1px; background: #222; margin: 15px 20px; }
         .tituloTime { text-align: center; font-weight: bold; margin-bottom: 10px; }
         .amareloTitulo { color: #ffd600; }
         .azulTitulo { color: #00c8ff; }
-        .botao { display: block; width: 90%; margin: 10px auto; padding: 18px; font-size: 16px; font-weight: bold; border: none; border-radius: 12px; }
+        .botao { display: block; width: 90%; margin: 10px auto; padding: 18px; font-size: 16px; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; }
         .gol { background: #00c853; color: #000; }
         .lance { background: #ff9800; color: #000; }
         .falta { background: #ff3b30; color: #fff; }
         #menuBox { display: none; position: absolute; right: 20px; top: 55px; background: #111; border: 1px solid #333; border-radius: 8px; padding: 8px; z-index: 100; }
-        #menuBox button { display: block; width: 100%; background: #222; color: #fff; border: none; padding: 10px; margin: 4px 0; border-radius: 4px; text-align: left; }
+        #menuBox button { display: block; width: 100%; background: #222; color: #fff; border: none; padding: 10px; margin: 4px 0; border-radius: 4px; text-align: left; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -121,17 +121,22 @@ function getNomeTimeColorido(time) {
 
 function gol(time) {
     if (!jogando) { alert("Inicie o jogo primeiro!"); return; }
-    navigator.vibrate(200);
+    if ('vibrate' in navigator) navigator.vibrate(200);
+    
     if (time == "Amarelo") { amarelo++; ultimoGol = "Amarelo"; } 
     else { azul++; ultimoGol = "Azul"; }
+    
     atualizarPlacar();
+    // O placar na mensagem do WhatsApp é atualizado apenas para os Gols
     relatorio.push("⚽ [" + agora() + "] GOL - " + getNomeTimeColorido(time) + " (" + amarelo + " x " + azul + ")");
 }
 
 function evento(tipo, time) {
     if (!jogando) { alert("Inicie o jogo primeiro!"); return; }
-    navigator.vibrate(100);
+    if ('vibrate' in navigator) navigator.vibrate(100);
+    
     let emoji = (tipo === 'Falta') ? "🟥" : "🎯";
+    // Faltas e lances vão para o relatório de eventos sem alterar o placar
     relatorio.push(emoji + " [" + agora() + "] " + tipo + " - " + getNomeTimeColorido(time));
 }
 
@@ -173,7 +178,7 @@ function toggle() {
         
         relatorio.push("--------------------------");
         relatorio.push("FIM: " + fim.toLocaleTimeString());
-        relatorio.push("RESULTADO: 🟡 " + amarelo + " x " + azul + " 🔵");
+        relatorio.push("RESULTADO FINAL: 🟡 " + amarelo + " x " + azul + " 🔵");
         
         let vencedor = "EMPATE";
         if (amarelo > azul) vencedor = "🟡 AMARELO 🏆";
@@ -183,9 +188,6 @@ function toggle() {
         
         document.getElementById("controle").innerText = "INICIAR NOVO JOGO";
         document.getElementById("controle").style.background = "#2d8cf0";
-        document.getElementById("cronometro").innerText = "00:00:00";
-        amarelo = 0; azul = 0;
-        atualizarPlacar();
         
         jogando = false;
         alert("Jogo finalizado! Envie o relatório pelo menu.");
@@ -193,8 +195,8 @@ function toggle() {
 }
 
 function crono() {
-    let agora = new Date();
-    let diff = new Date(agora - inicio);
+    let agoraTime = new Date();
+    let diff = new Date(agoraTime - inicio);
     let h = String(diff.getUTCHours()).padStart(2, '0');
     let m = String(diff.getUTCMinutes()).padStart(2, '0');
     let s = String(diff.getUTCSeconds()).padStart(2, '0');
@@ -213,7 +215,7 @@ function enviarWhatsApp() {
     document.getElementById("menuBox").style.display = "none";
 }
 
-// Garante que o bloqueio volte caso o usuário saia e volte para a aba do navegador
+// Reativa o WakeLock se o usuário alternar de aba e voltar
 document.addEventListener('visibilitychange', async () => {
   if (wakeLock !== null && document.visibilityState === 'visible') {
     solicitarWakeLock();
