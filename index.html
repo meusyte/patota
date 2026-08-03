@@ -32,7 +32,7 @@
             justify-content: center; 
             align-items: center; 
             position: relative; 
-            padding: 5px 0; 
+            padding: 2px 0; 
         }
         h1 { margin: 0; font-size: 18px; font-weight: bold; }
         #menu { position: absolute; right: 10px; font-size: 22px; cursor: pointer; padding: 5px; }
@@ -41,60 +41,63 @@
         #cronometro { text-align: center; font-size: 18px; font-weight: bold; margin-top: 2px; }
         
         #cardPlacar { 
-            margin: 8px 0; 
+            margin: 6px 0; 
             background: #111; 
             border-radius: 12px; 
-            padding: 10px 0; 
+            padding: 8px 0; 
             text-align: center; 
         }
-        #placar { font-size: 48px; font-weight: bold; line-height: 1; }
-        #placar span { display: inline-block; min-width: 50px; }
+        #placar { font-size: 44px; font-weight: bold; line-height: 1; }
+        #placar span { display: inline-block; min-width: 45px; }
         
         #controle { 
             display: block; 
             width: 100%; 
-            padding: 12px; 
+            padding: 14px; 
             font-size: 16px; 
             font-weight: bold; 
             background: #2d8cf0; 
             border: none; 
-            border-radius: 10px; 
+            border-radius: 8px; 
             color: #fff; 
             cursor: pointer;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
-        /* Layout em 2 Colunas Lado a Lado */
+        /* Container das Colunas */
         .times-container {
             display: flex;
-            flex: 1;
-            gap: 10px;
+            gap: 16px; /* Distância aumentada entre as colunas */
+            align-items: flex-start; /* Impede que a coluna estique até o fim da página */
         }
 
+        /* Colunas de cada time */
         .coluna-time {
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            background: #111;
+            gap: 10px;
+            background: #111; /* Sombreamento escuro */
             padding: 10px;
             border-radius: 12px;
+            /* O fundo termina logo após o último botão graças ao align-items: flex-start */
         }
 
         .tituloTime { 
             text-align: center; 
             font-weight: bold; 
             font-size: 14px;
-            padding-bottom: 4px;
+            padding-bottom: 6px;
             border-bottom: 1px solid #222;
         }
         .amareloTitulo { color: #ffd600; }
         .azulTitulo { color: #00c8ff; }
 
+        /* Botões Maiores no Comprimento (Altura) */
         .botao { 
-            flex: 1; 
             width: 100%; 
-            font-size: 15px; 
+            height: 95px; /* Comprimento/altura aumentado */
+            font-size: 18px; 
             font-weight: bold; 
             border: none; 
             border-radius: 8px; 
@@ -102,11 +105,18 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .gol { background: #00c853; color: #000; }
         .lance { background: #ff9800; color: #000; }
         .falta { background: #ff3b30; color: #fff; }
+
+        .botao:active, #controle:active {
+            opacity: 0.8;
+            transform: scale(0.98);
+        }
 
         #menuBox { 
             display: none; 
@@ -149,7 +159,7 @@
     <div id="cardPlacar">
         <div id="placar">
             <span id="a" style="color:#ffd600;">0</span>
-            <span style="font-size:24px;opacity:0.6;">x</span>
+            <span style="font-size:22px;opacity:0.6;">x</span>
             <span id="b" style="color:#00c8ff;">0</span>
         </div>
     </div>
@@ -188,6 +198,48 @@ let relatorio = [];
 let ultimoGol = null;
 let timer;
 let wakeLock = null;
+let audioCtx = null;
+
+function tocarSomClick(frequencia = 600, duracao = 0.08) {
+    try {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(frequencia, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duracao);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duracao);
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function feedbackClique(tipo) {
+    if (tipo === 'gol') {
+        tocarSomClick(800, 0.15);
+    } else if (tipo === 'falta') {
+        tocarSomClick(350, 0.12);
+    } else {
+        tocarSomClick(600, 0.08);
+    }
+
+    if ('vibrate' in navigator) {
+        if (tipo === 'gol') {
+            navigator.vibrate([100, 50, 100]);
+        } else {
+            navigator.vibrate(80);
+        }
+    }
+}
 
 async function solicitarWakeLock() {
     try {
@@ -213,6 +265,7 @@ setInterval(atualizarHora, 1000);
 atualizarHora();
 
 document.getElementById("menu").onclick = function() {
+    feedbackClique('click');
     let box = document.getElementById("menuBox");
     box.style.display = box.style.display === "block" ? "none" : "block";
 }
@@ -230,7 +283,7 @@ function getNomeTimeColorido(time) {
 
 function gol(time) {
     if (!jogando) { alert("Inicie o jogo primeiro!"); return; }
-    if ('vibrate' in navigator) navigator.vibrate(200);
+    feedbackClique('gol');
     
     if (time == "Amarelo") { amarelo++; ultimoGol = "Amarelo"; } 
     else { azul++; ultimoGol = "Azul"; }
@@ -241,13 +294,16 @@ function gol(time) {
 
 function evento(tipo, time) {
     if (!jogando) { alert("Inicie o jogo primeiro!"); return; }
-    if ('vibrate' in navigator) navigator.vibrate(100);
+    
+    if (tipo === 'Falta') feedbackClique('falta');
+    else feedbackClique('click');
     
     let emoji = (tipo === 'Falta') ? "🟥" : "🎯";
     relatorio.push(emoji + " [" + agora() + "] " + tipo + " - " + getNomeTimeColorido(time));
 }
 
 function voltarGol() {
+    feedbackClique('click');
     if (!ultimoGol) return;
     let timeAnulado = ultimoGol;
     if (ultimoGol == "Amarelo" && amarelo > 0) amarelo--;
@@ -259,6 +315,7 @@ function voltarGol() {
 }
 
 function toggle() {
+    feedbackClique('click');
     if (!jogando) {
         solicitarWakeLock();
         inicio = new Date();
@@ -270,7 +327,7 @@ function toggle() {
         relatorio.push("==========================");
         relatorio.push("   PATOTA VIRA COPO'S");
         relatorio.push("==========================");
-        relatorio.push("DATA: " + inicio.toLocaleDateString());
+        relatorio.push("DATA: " + inicio.toLocaleString());
         relatorio.push("INÍCIO: " + inicio.toLocaleTimeString());
         relatorio.push("--------------------------");
         
@@ -311,6 +368,7 @@ function crono() {
 }
 
 function enviarWhatsApp() {
+    feedbackClique('click');
     if (relatorio.length === 0) {
         alert("Não há dados de jogo para enviar!");
         return;
