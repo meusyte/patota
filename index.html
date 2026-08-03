@@ -122,8 +122,8 @@
 
         /* Efeito Visual: Ampliação + Piscar/Brilho ao Pressionar */
         .botao:active, #controle:active, .pressionado {
-            transform: scale(1.06) !important; /* Amplia o botão */
-            filter: brightness(1.6) drop-shadow(0 0 12px rgba(255, 255, 255, 0.6)) !important; /* Efeito Piscar / Brilho intenso */
+            transform: scale(1.06) !important;
+            filter: brightness(1.6) drop-shadow(0 0 12px rgba(255, 255, 255, 0.6)) !important;
             animation: piscarEAmpliar 0.15s ease-in-out;
         }
 
@@ -225,6 +225,33 @@ let timer;
 let wakeLock = null;
 let audioCtx = null;
 
+// Solicita que a tela permaneça acesa assim que abre o link
+async function solicitarWakeLock() {
+    try {
+        if ('wakeLock' in navigator && wakeLock === null) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log("Tela configurada para permanecer sempre ativa!");
+        }
+    } catch (err) {
+        console.log(`Wake Lock Error: ${err.name}, ${err.message}`);
+    }
+}
+
+// Ativa imediatamente ao carregar
+solicitarWakeLock();
+
+// Garante a ativação assim que o usuário toca em qualquer parte da tela
+document.addEventListener('touchstart', solicitarWakeLock, { once: false });
+document.addEventListener('click', solicitarWakeLock, { once: false });
+
+// Reativa a tela acesa quando o usuário volta para a aba do navegador
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible') {
+        wakeLock = null;
+        solicitarWakeLock();
+    }
+});
+
 function tocarSomClick(frequencia = 600, duracao = 0.08) {
     try {
         if (!audioCtx) {
@@ -279,23 +306,6 @@ function feedbackClique(elemento, tipo) {
         } catch(e) {
             console.log("Vibração não permitida.");
         }
-    }
-}
-
-async function solicitarWakeLock() {
-    try {
-        if ('wakeLock' in navigator) {
-            wakeLock = await navigator.wakeLock.request('screen');
-        }
-    } catch (err) {
-        console.error(`${err.name}, ${err.message}`);
-    }
-}
-
-function liberarWakeLock() {
-    if (wakeLock !== null) {
-        wakeLock.release();
-        wakeLock = null;
     }
 }
 
@@ -379,7 +389,6 @@ function toggle() {
         timer = setInterval(crono, 1000);
         jogando = true;
     } else {
-        liberarWakeLock();
         let fim = new Date();
         clearInterval(timer);
         
@@ -422,12 +431,6 @@ function enviarWhatsApp() {
     window.open(url, "_blank");
     document.getElementById("menuBox").style.display = "none";
 }
-
-document.addEventListener('visibilitychange', async () => {
-  if (wakeLock !== null && document.visibilityState === 'visible') {
-    solicitarWakeLock();
-  }
-});
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js');
