@@ -8,7 +8,6 @@
     <style>
         * { 
             box-sizing: border-box; 
-            /* Desativa gestos de zoom por duplo toque em toda a página */
             touch-action: manipulation; 
         }
         html, body { 
@@ -69,6 +68,7 @@
             cursor: pointer;
             margin-bottom: 12px;
             touch-action: manipulation;
+            transition: transform 0.1s ease, filter 0.1s ease;
         }
 
         /* Layout das Colunas */
@@ -98,7 +98,7 @@
         .amareloTitulo { color: #ffd600; }
         .azulTitulo { color: #00c8ff; }
 
-        /* Botões com bloqueio de zoom e alta resposta ao toque */
+        /* Estilo dos Botões com Animação de Ampliação e Piscar */
         .botao { 
             width: 100%; 
             height: 95px; 
@@ -112,16 +112,34 @@
             justify-content: center;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation; /* Bloqueia zoom duplo clique */
+            touch-action: manipulation;
+            transition: transform 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.12s ease;
         }
         
         .gol { background: #00c853; color: #000; }
         .lance { background: #ff9800; color: #000; }
         .falta { background: #ff3b30; color: #fff; }
 
-        .botao:active, #controle:active {
-            opacity: 0.8;
-            transform: scale(0.98);
+        /* Efeito Visual: Ampliação + Piscar/Brilho ao Pressionar */
+        .botao:active, #controle:active, .pressionado {
+            transform: scale(1.06) !important; /* Amplia o botão */
+            filter: brightness(1.6) drop-shadow(0 0 12px rgba(255, 255, 255, 0.6)) !important; /* Efeito Piscar / Brilho intenso */
+            animation: piscarEAmpliar 0.15s ease-in-out;
+        }
+
+        @keyframes piscarEAmpliar {
+            0% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
+            50% {
+                transform: scale(1.08);
+                filter: brightness(1.8) drop-shadow(0 0 15px rgba(255,255,255,0.8));
+            }
+            100% {
+                transform: scale(1.06);
+                filter: brightness(1.6);
+            }
         }
 
         #menuBox { 
@@ -177,17 +195,17 @@
         <!-- Coluna Amarela -->
         <div class="coluna-time">
             <div class="tituloTime amareloTitulo">🟡 AMARELO</div>
-            <button class="botao gol" onclick="gol('Amarelo')">GOL</button>
-            <button class="botao lance" onclick="evento('Lance','Amarelo')">LANCE</button>
-            <button class="botao falta" onclick="evento('Falta','Amarelo')">FALTA</button>
+            <button class="botao gol" onclick="gol(this, 'Amarelo')">GOL</button>
+            <button class="botao lance" onclick="evento(this, 'Lance','Amarelo')">LANCE</button>
+            <button class="botao falta" onclick="evento(this, 'Falta','Amarelo')">FALTA</button>
         </div>
 
         <!-- Coluna Azul -->
         <div class="coluna-time">
             <div class="tituloTime azulTitulo">🔵 AZUL</div>
-            <button class="botao gol" onclick="gol('Azul')">GOL</button>
-            <button class="botao lance" onclick="evento('Lance','Azul')">LANCE</button>
-            <button class="botao falta" onclick="evento('Falta','Azul')">FALTA</button>
+            <button class="botao gol" onclick="gol(this, 'Azul')">GOL</button>
+            <button class="botao lance" onclick="evento(this, 'Lance','Azul')">LANCE</button>
+            <button class="botao falta" onclick="evento(this, 'Falta','Azul')">FALTA</button>
         </div>
     </div>
 </div>
@@ -230,8 +248,17 @@ function tocarSomClick(frequencia = 600, duracao = 0.08) {
     }
 }
 
-function feedbackClique(tipo) {
-    // Tenta reproduzir o som sintetizado
+function dispararAnimacaoBotao(elemento) {
+    if (!elemento) return;
+    elemento.classList.add('pressionado');
+    setTimeout(() => {
+        elemento.classList.remove('pressionado');
+    }, 150);
+}
+
+function feedbackClique(elemento, tipo) {
+    dispararAnimacaoBotao(elemento);
+    
     if (tipo === 'gol') {
         tocarSomClick(800, 0.15);
     } else if (tipo === 'falta') {
@@ -240,18 +267,17 @@ function feedbackClique(tipo) {
         tocarSomClick(600, 0.08);
     }
 
-    // Vibração via Hardware (Funciona no Silencioso no Android)
     if ('vibrate' in navigator) {
         try {
             if (tipo === 'gol') {
-                navigator.vibrate([120, 60, 120]); // Vibração dupla marcante para gol
+                navigator.vibrate([120, 60, 120]);
             } else if (tipo === 'falta') {
-                navigator.vibrate([200]); // Vibração longa para falta
+                navigator.vibrate([200]);
             } else {
-                navigator.vibrate(70); // Vibração curta padrão
+                navigator.vibrate(70);
             }
         } catch(e) {
-            console.log("Vibração não permitida ou não suportada no dispositivo.");
+            console.log("Vibração não permitida.");
         }
     }
 }
@@ -280,7 +306,7 @@ setInterval(atualizarHora, 1000);
 atualizarHora();
 
 document.getElementById("menu").onclick = function() {
-    feedbackClique('click');
+    feedbackClique(this, 'click');
     let box = document.getElementById("menuBox");
     box.style.display = box.style.display === "block" ? "none" : "block";
 }
@@ -296,9 +322,9 @@ function getNomeTimeColorido(time) {
     return time === "Amarelo" ? "🟡 AMARELO" : "🔵 AZUL";
 }
 
-function gol(time) {
+function gol(elemento, time) {
     if (!jogando) { alert("Inicie o jogo primeiro!"); return; }
-    feedbackClique('gol');
+    feedbackClique(elemento, 'gol');
     
     if (time == "Amarelo") { amarelo++; ultimoGol = "Amarelo"; } 
     else { azul++; ultimoGol = "Azul"; }
@@ -307,18 +333,18 @@ function gol(time) {
     relatorio.push("⚽ [" + agora() + "] GOL - " + getNomeTimeColorido(time) + " (" + amarelo + " x " + azul + ")");
 }
 
-function evento(tipo, time) {
+function evento(elemento, tipo, time) {
     if (!jogando) { alert("Inicie o jogo primeiro!"); return; }
     
-    if (tipo === 'Falta') feedbackClique('falta');
-    else feedbackClique('click');
+    if (tipo === 'Falta') feedbackClique(elemento, 'falta');
+    else feedbackClique(elemento, 'click');
     
     let emoji = (tipo === 'Falta') ? "🟥" : "🎯";
     relatorio.push(emoji + " [" + agora() + "] " + tipo + " - " + getNomeTimeColorido(time));
 }
 
 function voltarGol() {
-    feedbackClique('click');
+    feedbackClique(null, 'click');
     if (!ultimoGol) return;
     let timeAnulado = ultimoGol;
     if (ultimoGol == "Amarelo" && amarelo > 0) amarelo--;
@@ -330,7 +356,9 @@ function voltarGol() {
 }
 
 function toggle() {
-    feedbackClique('click');
+    let btnControle = document.getElementById("controle");
+    feedbackClique(btnControle, 'click');
+    
     if (!jogando) {
         solicitarWakeLock();
         inicio = new Date();
@@ -346,8 +374,8 @@ function toggle() {
         relatorio.push("INÍCIO: " + inicio.toLocaleTimeString());
         relatorio.push("--------------------------");
         
-        document.getElementById("controle").innerText = "FINALIZAR JOGO";
-        document.getElementById("controle").style.background = "#ff3b30";
+        btnControle.innerText = "FINALIZAR JOGO";
+        btnControle.style.background = "#ff3b30";
         timer = setInterval(crono, 1000);
         jogando = true;
     } else {
@@ -365,8 +393,8 @@ function toggle() {
         relatorio.push("VENCEDOR: " + vencedor);
         relatorio.push("==========================");
         
-        document.getElementById("controle").innerText = "INICIAR NOVO JOGO";
-        document.getElementById("controle").style.background = "#2d8cf0";
+        btnControle.innerText = "INICIAR NOVO JOGO";
+        btnControle.style.background = "#2d8cf0";
         
         jogando = false;
         alert("Jogo finalizado! O placar final foi " + amarelo + " x " + azul + ". Envie o relatório pelo menu.");
@@ -383,7 +411,7 @@ function crono() {
 }
 
 function enviarWhatsApp() {
-    feedbackClique('click');
+    feedbackClique(null, 'click');
     if (relatorio.length === 0) {
         alert("Não há dados de jogo para enviar!");
         return;
