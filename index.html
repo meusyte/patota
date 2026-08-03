@@ -2,11 +2,15 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Patota Vira Copo's</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        * { box-sizing: border-box; }
+        * { 
+            box-sizing: border-box; 
+            /* Desativa gestos de zoom por duplo toque em toda a página */
+            touch-action: manipulation; 
+        }
         html, body { 
             margin: 0; 
             padding: 0; 
@@ -16,6 +20,8 @@
             font-family: Arial, sans-serif; 
             background: #000; 
             color: #fff; 
+            user-select: none;
+            -webkit-user-select: none;
         }
         
         .container {
@@ -62,25 +68,24 @@
             color: #fff; 
             cursor: pointer;
             margin-bottom: 12px;
+            touch-action: manipulation;
         }
 
-        /* Container das Colunas */
+        /* Layout das Colunas */
         .times-container {
             display: flex;
-            gap: 16px; /* Distância aumentada entre as colunas */
-            align-items: flex-start; /* Impede que a coluna estique até o fim da página */
+            gap: 16px;
+            align-items: flex-start;
         }
 
-        /* Colunas de cada time */
         .coluna-time {
             flex: 1;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            background: #111; /* Sombreamento escuro */
+            background: #111;
             padding: 10px;
             border-radius: 12px;
-            /* O fundo termina logo após o último botão graças ao align-items: flex-start */
         }
 
         .tituloTime { 
@@ -93,10 +98,10 @@
         .amareloTitulo { color: #ffd600; }
         .azulTitulo { color: #00c8ff; }
 
-        /* Botões Maiores no Comprimento (Altura) */
+        /* Botões com bloqueio de zoom e alta resposta ao toque */
         .botao { 
             width: 100%; 
-            height: 95px; /* Comprimento/altura aumentado */
+            height: 95px; 
             font-size: 18px; 
             font-weight: bold; 
             border: none; 
@@ -107,6 +112,7 @@
             justify-content: center;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation; /* Bloqueia zoom duplo clique */
         }
         
         .gol { background: #00c853; color: #000; }
@@ -142,6 +148,7 @@
             text-align: left; 
             cursor: pointer; 
             font-size: 14px;
+            touch-action: manipulation;
         }
     </style>
 </head>
@@ -224,6 +231,7 @@ function tocarSomClick(frequencia = 600, duracao = 0.08) {
 }
 
 function feedbackClique(tipo) {
+    // Tenta reproduzir o som sintetizado
     if (tipo === 'gol') {
         tocarSomClick(800, 0.15);
     } else if (tipo === 'falta') {
@@ -232,11 +240,18 @@ function feedbackClique(tipo) {
         tocarSomClick(600, 0.08);
     }
 
+    // Vibração via Hardware (Funciona no Silencioso no Android)
     if ('vibrate' in navigator) {
-        if (tipo === 'gol') {
-            navigator.vibrate([100, 50, 100]);
-        } else {
-            navigator.vibrate(80);
+        try {
+            if (tipo === 'gol') {
+                navigator.vibrate([120, 60, 120]); // Vibração dupla marcante para gol
+            } else if (tipo === 'falta') {
+                navigator.vibrate([200]); // Vibração longa para falta
+            } else {
+                navigator.vibrate(70); // Vibração curta padrão
+            }
+        } catch(e) {
+            console.log("Vibração não permitida ou não suportada no dispositivo.");
         }
     }
 }
